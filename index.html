@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>APKPO.io | APK Oluşturma ve Özelleştirme</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --accent-color: #3498db;
+            --success-color: #27ae60;
+            --error-color: #e74c3c;
+            --bg-color: #f4f7f6;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background: #ffffff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 500px;
+        }
+
+        h2 {
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid var(--bg-color);
+            padding-bottom: 10px;
+        }
+
+        .step {
+            display: none;
+        }
+
+        .step.active {
+            display: block;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        input[type="text"], input[type="file"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--accent-color);
+            border: none;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        .status-msg {
+            margin-top: 10px;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .error { color: var(--error-color); }
+        .success { color: var(--success-color); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>APKPO.io Kontrol Paneli</h2>
+
+    <div id="step1" class="step active">
+        <div class="input-group">
+            <label for="botToken">Telegram Bot Token</label>
+            <input type="text" id="botToken" placeholder="123456789:ABCdefGHiJklmNoPQRstuVwXyZ">
+        </div>
+        <button onclick="validateToken()">Token Doğrula ve Devam Et</button>
+        <div id="tokenMsg" class="status-msg"></div>
+    </div>
+
+    <div id="step2" class="step">
+        <div class="input-group">
+            <label for="username">Kullanıcı Adı Belirleyin</label>
+            <input type="text" id="username" placeholder="Örn: admin_apk">
+        </div>
+        <button onclick="saveUser()">Kullanıcıyı Kaydet</button>
+        <div id="userMsg" class="status-msg"></div>
+    </div>
+
+    <div id="step3" class="step">
+        <div class="input-group">
+            <label for="appName">Uygulama Adı</label>
+            <input type="text" id="appName" placeholder="Uygulamanızın Adı">
+        </div>
+        <div class="input-group">
+            <label for="appIcon">Uygulama İkonu (PNG)</label>
+            <input type="file" id="appIcon" accept="image/png">
+        </div>
+        <div class="input-group">
+            <label for="packageName">Paket Adı</label>
+            <input type="text" id="packageName" placeholder="com.sirket.uygulama">
+        </div>
+        <button onclick="finalizeConfig()">APK Yapılandırmasını Tamamla</button>
+    </div>
+</div>
+
+<script>
+    const state = {
+        token: "",
+        username: ""
+    };
+
+    /**
+     * Telegram Bot Token formatını regex ile doğrular.
+     */
+    function validateToken() {
+        const tokenInput = document.getElementById('botToken').value.trim();
+        const msg = document.getElementById('tokenMsg');
+        
+        // Telegram Token Formatı: [Sayılar]:[Karakterler]
+        const tokenRegex = /^[0-9]{8,12}:[a-zA-Z0-9_-]{35}$/;
+
+        if (tokenRegex.test(tokenInput)) {
+            state.token = tokenInput;
+            msg.className = "status-msg success";
+            msg.innerText = "Token formatı geçerli.";
+            
+            setTimeout(() => {
+                showStep(2);
+            }, 1000);
+        } else {
+            msg.className = "status-msg error";
+            msg.innerText = "Hata: Geçersiz Telegram bot token formatı.";
+        }
+    }
+
+    /**
+     * Kullanıcı adını doğrular ve belleğe alır.
+     */
+    function saveUser() {
+        const userInp = document.getElementById('username').value.trim();
+        const msg = document.getElementById('userMsg');
+
+        if (userInp.length >= 3) {
+            state.username = userInp;
+            // Güvenli saklama simülasyonu (SessionStorage)
+            sessionStorage.setItem('apkpo_user', btoa(userInp)); 
+            
+            msg.className = "status-msg success";
+            msg.innerText = "Kullanıcı adı başarıyla kaydedildi.";
+            
+            setTimeout(() => {
+                showStep(3);
+            }, 1000);
+        } else {
+            msg.className = "status-msg error";
+            msg.innerText = "Hata: Kullanıcı adı en az 3 karakter olmalıdır.";
+        }
+    }
+
+    /**
+     * Adımlar arası geçişi sağlar.
+     */
+    function showStep(stepNum) {
+        document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+        document.getElementById('step' + stepNum).classList.add('active');
+    }
+
+    /**
+     * Son yapılandırma verilerini konsola yazdırır.
+     */
+    function finalizeConfig() {
+        alert("APK Yapılandırması Hazır!\nKullanıcı: " + state.username + "\nToken: " + state.token);
+    }
+</script>
+
+</body>
+</html>
